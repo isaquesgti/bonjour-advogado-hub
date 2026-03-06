@@ -5,19 +5,39 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Scale, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Scale, Mail, Lock, User, ArrowRight, Hash } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [oabNumber, setOabNumber] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.info("Autenticação será habilitada com Lovable Cloud. Esta é uma demonstração da interface.");
+    setLoading(true);
+    try {
+      if (isSignUp) {
+        await signUp(email, password, name, oabNumber);
+        toast.success("Conta criada! Verifique seu email para confirmar.");
+      } else {
+        await signIn(email, password);
+        toast.success("Login realizado com sucesso!");
+        navigate("/monitoring");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao processar solicitação");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,26 +60,43 @@ export default function LoginPage() {
               </h1>
               <p className="text-sm text-muted-foreground">
                 {isSignUp
-                  ? "Crie sua conta para acessar o boletim jurídico"
+                  ? "Crie sua conta para monitorar publicações"
                   : "Entre na sua conta Bonjour Advogado"}
               </p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {isSignUp && (
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome completo</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="name"
-                        placeholder="Dr. João Silva"
-                        className="pl-10"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nome completo</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="name"
+                          placeholder="Dr. João Silva"
+                          className="pl-10"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="oab">Número OAB</Label>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="oab"
+                          placeholder="123456/SP"
+                          className="pl-10"
+                          value={oabNumber}
+                          onChange={(e) => setOabNumber(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -72,6 +109,7 @@ export default function LoginPage() {
                       className="pl-10"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                   </div>
                 </div>
@@ -86,11 +124,18 @@ export default function LoginPage() {
                       className="pl-10"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark">
-                  {isSignUp ? "Criar conta" : "Entrar"} <ArrowRight className="ml-2 h-4 w-4" />
+                <Button
+                  type="submit"
+                  className="w-full bg-accent text-accent-foreground hover:bg-gold-dark"
+                  disabled={loading}
+                >
+                  {loading ? "Processando..." : isSignUp ? "Criar conta" : "Entrar"}{" "}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </form>
               <div className="mt-4 text-center">
