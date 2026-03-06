@@ -23,28 +23,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // 1. Listener de mudanças de auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        setTimeout(() => {
-          fetchProfile(session.user.id);
-          checkAdmin(session.user.id);
-        }, 0);
+        // ✅ Promise.all sem setTimeout — sem race condition
+        await Promise.all([
+          fetchProfile(session.user.id),
+          checkAdmin(session.user.id),
+        ]);
       } else {
         setProfile(null);
         setIsAdmin(false);
       }
+
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 2. Sessão inicial (carregamento da página)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        fetchProfile(session.user.id);
-        checkAdmin(session.user.id);
+        await Promise.all([
+          fetchProfile(session.user.id),
+          checkAdmin(session.user.id),
+        ]);
       }
+
       setLoading(false);
     });
 
@@ -71,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { full_name: fullName, oab_number: oabNumber },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}/monitoring`,
       },
     });
     if (error) throw error;
