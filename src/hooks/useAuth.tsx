@@ -11,6 +11,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, oabNumber: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -61,12 +63,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("full_name, oab_number, email")
       .eq("user_id", userId)
       .single();
+
+    if (error) {
+      console.error("Error fetching profile:", error);
+      return null;
+    }
+
     if (data) setProfile(data);
+    return data;
   }
 
   async function checkAdmin(userId: string) {
@@ -80,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { full_name: fullName, oab_number: oabNumber },
-        emailRedirectTo: `${window.location.origin}/monitoring`,
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     });
     if (error) throw error;
@@ -96,8 +105,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }
 
+  async function resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  }
+
+  async function updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, profile, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
+      isAdmin,
+      profile,
+      signUp,
+      signIn,
+      signOut,
+      resetPassword,
+      updatePassword
+    }}>
       {children}
     </AuthContext.Provider>
   );
