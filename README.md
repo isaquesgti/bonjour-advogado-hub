@@ -1,73 +1,404 @@
-# Welcome to your Lovable project
+# BONJOUR ADVOGADO HUB
 
-## Project info
+Estrutura do Banco de Dados e Arquitetura do Sistema
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Este projeto é um SaaS jurídico para monitoramento automático de processos e publicações em diários oficiais.
 
-## How can I edit this code?
+O sistema permite que advogados:
 
-There are several ways of editing your application.
+* monitorem processos
+* recebam notificações automáticas
+* recebam emails com movimentações
+* acompanhem prazos e publicações
 
-**Use Lovable**
+A arquitetura foi projetada para escalar e suportar milhares de processos monitorados.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+ARQUITETURA GERAL DO SISTEMA
 
-**Use your preferred IDE**
+Fluxo principal:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Usuário cria conta
+2. Advogado cadastra número de processo
+3. Robô coleta publicações dos diários oficiais
+4. Sistema detecta processos monitorados
+5. Publicação é salva no banco
+6. Notificação é gerada
+7. Email é enviado ao advogado
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+ESTRUTURA DO BANCO DE DADOS
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+O banco utiliza PostgreSQL via Supabase.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+TABELA: profiles
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Armazena informações adicionais do usuário.
 
-**Edit a file directly in GitHub**
+Campos:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+id
+uuid
+identificador do registro
 
-**Use GitHub Codespaces**
+user_id
+uuid
+referência ao usuário autenticado
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+full_name
+text
+nome completo do advogado
 
-## What technologies are used for this project?
+oab_number
+text
+número da OAB
 
-This project is built with:
+email
+text
+email do usuário
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+created_at
+timestamp
+data de criação
 
-## How can I deploy this project?
+updated_at
+timestamp
+data de atualização
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+TABELA: monitored_processes
 
-Yes, you can!
+Processos monitorados pelos usuários.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Campos:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+id
+uuid
+identificador
+
+user_id
+uuid
+dono do monitoramento
+
+process_number
+text
+número do processo
+
+court
+text
+tribunal
+
+description
+text
+descrição opcional
+
+is_active
+boolean
+se o monitoramento está ativo
+
+created_at
+timestamp
+
+updated_at
+timestamp
+
+---
+
+TABELA: publications
+
+Publicações coletadas automaticamente dos diários oficiais.
+
+Campos:
+
+id
+uuid
+
+process_number
+text
+número do processo detectado
+
+court
+text
+tribunal
+
+class
+text
+classe processual
+
+parties
+text
+partes envolvidas
+
+judge
+text
+juiz responsável
+
+publication_date
+date
+data da publicação
+
+full_text
+text
+texto completo da publicação
+
+source
+text
+origem do diário oficial
+
+created_at
+timestamp
+
+---
+
+TABELA: notifications
+
+Notificações geradas para os usuários.
+
+Campos:
+
+id
+uuid
+
+user_id
+uuid
+
+publication_id
+uuid
+referência à publicação encontrada
+
+monitored_process_id
+uuid
+processo monitorado
+
+title
+text
+título da notificação
+
+message
+text
+mensagem
+
+is_read
+boolean
+se o usuário leu
+
+email_sent
+boolean
+se email já foi enviado
+
+created_at
+timestamp
+
+---
+
+TABELA: user_roles
+
+Controle de permissões.
+
+Campos:
+
+id
+uuid
+
+user_id
+uuid
+
+role
+text
+
+Valores possíveis:
+
+admin
+user
+
+---
+
+TABELAS RECOMENDADAS PARA ESCALA
+
+Estas tabelas são importantes para sistemas profissionais de monitoramento jurídico.
+
+---
+
+TABELA: courts
+
+Lista de tribunais monitorados.
+
+Campos:
+
+id
+uuid
+
+name
+text
+
+code
+text
+
+state
+text
+
+country
+text
+
+---
+
+TABELA: diary_sources
+
+Lista de fontes de diários oficiais.
+
+Campos:
+
+id
+uuid
+
+court_id
+uuid
+
+name
+text
+
+url
+text
+
+scraping_type
+text
+
+Valores:
+
+pdf
+html
+api
+
+last_scraped_at
+timestamp
+
+---
+
+TABELA: scraping_logs
+
+Logs do robô de coleta.
+
+Campos:
+
+id
+uuid
+
+source_id
+uuid
+
+scraped_at
+timestamp
+
+status
+text
+
+records_found
+integer
+
+error_message
+text
+
+---
+
+TABELA: email_logs
+
+Controle de emails enviados.
+
+Campos:
+
+id
+uuid
+
+user_id
+uuid
+
+notification_id
+uuid
+
+email
+text
+
+sent_at
+timestamp
+
+status
+text
+
+---
+
+RELACIONAMENTOS
+
+auth.users
+|
+profiles
+|
+monitored_processes
+|
+notifications
+|
+publications
+
+---
+
+ROBÔ DE MONITORAMENTO JURÍDICO
+
+O sistema possui um robô que executa periodicamente.
+
+Fluxo do robô:
+
+1 baixar diário oficial
+2 extrair texto
+3 localizar números de processos
+4 salvar publicações
+5 cruzar com processos monitorados
+6 gerar notificações
+7 enviar email
+
+---
+
+DIÁRIOS QUE PODEM SER MONITORADOS
+
+TJSP
+TRF
+TRT
+STJ
+STF
+TST
+Diários estaduais
+
+---
+
+ARQUITETURA DO SISTEMA
+
+Frontend
+React + Vite
+
+Backend
+Supabase
+
+Banco de dados
+PostgreSQL
+
+Deploy
+Vercel
+
+---
+
+FUTURAS FUNCIONALIDADES
+
+* detecção automática de prazos
+* análise com IA de movimentações
+* dashboard de prazos processuais
+* integração com tribunais
+* API pública
+
+---
+
+OBJETIVO DO PROJETO
+
+Criar um sistema de monitoramento jurídico automatizado similar a plataformas como Bonnjur, porém com arquitetura moderna e escalável.
